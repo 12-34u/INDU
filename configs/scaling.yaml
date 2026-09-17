@@ -1,0 +1,6 @@
+scaling:
+  default_working_gsd_m: 1.0
+  pyramid_levels:
+    - 0  # native
+    - 1  # 2x downsampled
+    - 2  # 4x downsampled

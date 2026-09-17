@@ -1,0 +1,7 @@
+navigation:
+  weights:
+    slope: 0.45
+    roughness: 0.25
+    crater: 0.30
+  max_slope_deg: 20.0
+  heuristic_weight: 1.0

@@ -1,0 +1,8 @@
+numpy
+opencv-python-headless
+rasterio
+pyyaml
+fastapi
+uvicorn
+pydantic
+scipy

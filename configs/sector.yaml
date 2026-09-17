@@ -1,0 +1,9 @@
+sector:
+  id: sector_001
+  center_latitude: -70.8
+  center_longitude: 22.8
+  width_m: 1000
+  height_m: 1000
+  working_gsd_m: 1.0
+  coordinate_system:
+    type: local_lunar_xy

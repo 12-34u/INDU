@@ -1,0 +1,9 @@
+registration:
+  default_matcher: "sift"
+  min_matches: 30
+  min_inlier_ratio: 0.35
+  max_rmse_px: 5.0
+  min_spatial_coverage: 0.30
+  geometry:
+    default_model: "similarity" # or affine, homography
+    ransac_threshold: 3.0

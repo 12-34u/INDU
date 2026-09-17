@@ -1,0 +1,6 @@
+mission: "Chandrayaan-2"
+instrument: "OHRC"
+product_id: "ch2_ohr_ncp_20190907T0438126359_d_img_g26"
+role: "Input Imagery"
+notes: "High resolution input image of the lunar surface. The raw zip is kept at data/raw/chandrayaan2/ohrc/ and never automatically extracted."
+gsd_m: 0.24

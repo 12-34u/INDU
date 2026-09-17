@@ -1,0 +1,9 @@
+{
+  "image_id": "demo_input_001",
+  "sensor": "synthetic_ohrc",
+  "instrument": "synthetic",
+  "width": 800,
+  "height": 800,
+  "gsd_m_per_px": 0.5,
+  "source_path": "data/demo/input/demo_input.png"
+}

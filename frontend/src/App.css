@@ -1,0 +1,149 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg: #0b0c10;
+  --panel-bg: #1f2833;
+  --accent: #66fcf1;
+  --accent-dim: #45a29e;
+  --text: #c5c6c7;
+  --text-bright: #ffffff;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+}
+
+#root {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+}
+
+.mission-control {
+  width: 350px;
+  background-color: var(--panel-bg);
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.mission-control h1 {
+  font-size: 1.2rem;
+  color: var(--accent);
+  margin-top: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.section {
+  margin-bottom: 24px;
+}
+
+.section h2 {
+  font-size: 0.85rem;
+  color: var(--text-bright);
+  border-bottom: 1px solid #444;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.button-group.row {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+button {
+  background: transparent;
+  border: 1px solid #444;
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+button:hover {
+  border-color: var(--accent-dim);
+  color: var(--text-bright);
+}
+
+button.active {
+  background: var(--accent-dim);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.metric-card {
+  background: rgba(0,0,0,0.2);
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  border: 1px solid #333;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.metric-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem;
+  color: var(--accent);
+  margin-top: 4px;
+}
+
+.canvas-container {
+  flex: 1;
+  position: relative;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(11, 12, 16, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.2rem;
+}
+
+.error-message {
+  color: #ff4a4a;
+  font-size: 0.85rem;
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(255, 74, 74, 0.1);
+  border: 1px solid #ff4a4a;
+  border-radius: 4px;
+}

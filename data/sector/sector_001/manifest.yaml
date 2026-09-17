@@ -1,0 +1,29 @@
+sector_id: sector_001
+
+center:
+    latitude: -70.8810
+    longitude: 22.7840
+
+bounds:
+    min_latitude: -70.90
+    max_latitude: -70.86
+    min_longitude: 22.75
+    max_longitude: 22.82
+
+size:
+    width_m: 1000
+    height_m: 1000
+
+images:
+    ohrc:
+        mission: Chandrayaan-2
+        instrument: OHRC
+        gsd_m: 0.24
+
+    lro_nac:
+        mission: LRO
+        instrument: NAC
+        gsd_m: 1.35
+
+terrain:
+    provider: local

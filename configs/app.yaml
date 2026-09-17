@@ -1,0 +1,7 @@
+app:
+  name: "Lunar Localized Mapping MVP"
+  version: "0.1.0"
+  log_level: "INFO"
+  data_dir: "data"
+  cache_dir: "data/cache"
+  demo_mode: true

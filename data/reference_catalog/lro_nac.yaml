@@ -1,0 +1,6 @@
+mission: "LRO"
+instrument: "NAC"
+product_id: "M1322346287LC"
+role: "Reference Imagery"
+notes: "Lunar Reconnaissance Orbiter Camera Narrow Angle Camera. The raw IMG is kept at data/raw/reference/lro/nac/ and never automatically extracted."
+gsd_m: 1.35

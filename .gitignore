@@ -1,0 +1,131 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env/
+.python-version
+
+# Packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Node / React / Vite
+# =========================
+frontend/node_modules/
+node_modules/
+
+frontend/dist/
+frontend/.vite/
+.vite/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# IDE / editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.DS_Store
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# Project runtime cache
+# =========================
+data/cache/
+!data/cache/.gitkeep
+
+# =========================
+# Generated outputs
+# =========================
+outputs/
+!outputs/.gitkeep
+
+# =========================
+# Large raw scientific data
+# =========================
+data/raw/
+!data/raw/.gitkeep
+
+# Note: Global exclusions for *.tif, *.img, *.zip, etc. have been removed.
+# Small, deliberately selected crops (e.g., in data/demo/ or data/sector/) may be committed.
+# The massive raw products are ignored strictly via the data/raw/ exclusion below.
+
+# =========================
+# Local real-sector generated data
+# =========================
+# Keep sector metadata/manifests tracked,
+# but ignore generated/large sector assets.
+data/sector/*/input/
+data/sector/*/reference/
+data/sector/*/dem/
+data/sector/*/craters/
+data/sector/*/cache/
+data/sector/*/imagery/
+
+# Always keep the sector manifest
+!data/sector/*/manifest.yaml
+
+# =========================
+# Temporary files
+# =========================
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# =========================
+# OS files
+# =========================
+Thumbs.db
+.DS_Store
+
+# =========================
+# Local agent / tooling files
+# =========================
+.task/
+.task.md.local
