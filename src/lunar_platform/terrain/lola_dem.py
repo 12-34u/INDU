@@ -42,6 +42,14 @@ MOON_SPHERE_RADIUS_M = 1737400.0
 WINDOW_MARGIN_PX = 4
 
 
+def _label_float(label: str, key: str, default: float) -> float:
+    """Pull a numeric keyword out of a PDS label, or fall back."""
+    import re
+
+    match = re.search(rf"{key}\s*=\s*(-?[\d.]+)", label)
+    return float(match.group(1)) if match else default
+
+
 @dataclass
 class SectorElevation:
     """Elevation sampled onto a sector grid, with its provenance."""
@@ -98,9 +106,36 @@ class LolaPolarDEM:
 
         self._geographic = CRS.from_proj4(f"+proj=longlat +R={MOON_SPHERE_RADIUS_M} +no_defs")
 
+        # Latitude band the product advertises, read from its label.
+        label = self.label_path.read_text("utf-8", "replace")
+        self.min_latitude = _label_float(label, "MINIMUM_LATITUDE", -90.0)
+        self.max_latitude = _label_float(label, "MAXIMUM_LATITUDE", 90.0)
+
     @property
     def product_id(self) -> str:
         return self.label_path.stem
+
+    def covers(self, longitude: float, latitude: float) -> bool:
+        """
+        Whether a point falls inside this polar tile.
+
+        Tested by projecting the point and checking it lands on the array,
+        rather than by comparing latitudes: a polar stereographic tile is a
+        disc, so its corners are outside the latitude band it advertises.
+        """
+        try:
+            cols, rows = self.lonlat_to_pixel(
+                np.array([longitude], float), np.array([latitude], float)
+            )
+        except Exception:
+            return False
+        return bool(
+            0 <= cols[0] < self.width
+            and 0 <= rows[0] < self.height
+            # The advertised latitude band still bounds it; the projection
+            # happily places the whole sphere somewhere on the plane.
+            and self.min_latitude <= latitude <= self.max_latitude
+        )
 
     def lonlat_to_pixel(
         self, longitude: np.ndarray, latitude: np.ndarray

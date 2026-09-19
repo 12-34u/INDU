@@ -15,6 +15,7 @@ import type {
   PerceptionResult,
   ReferenceMap,
   DataCapabilities,
+  DemSelection,
   RegistrationResult,
   RoverPose,
   RoverTelemetry,
@@ -22,6 +23,7 @@ import type {
   StartSite,
   InspectorView,
 } from './types'
+import { SPEED_PROFILES, DEFAULT_PROFILE_ID, profileById } from './lib/roverProfiles'
 import './App.css'
 
 const API_BASE = 'http://localhost:8000'
@@ -122,6 +124,9 @@ function App() {
   // Bumped to teleport the rover back to the selected site.
   const [roverReset, setRoverReset] = useState(0)
   const [driveMode, setDriveMode] = useState<DriveMode>('free')
+  // Clock multiplier only. The rover's physics is in real units either way.
+  const [timeScale, setTimeScale] = useState(4)
+  const [speedProfileId, setSpeedProfileId] = useState(DEFAULT_PROFILE_ID)
   const [startSiteId, setStartSiteId] = useState<string>(START_SITES[2].id)
   const [telemetry, setTelemetry] = useState<RoverTelemetry | null>(null)
 
@@ -130,6 +135,9 @@ function App() {
   const [perceptionLoading, setPerceptionLoading] = useState(false)
   const [perceptionError, setPerceptionError] = useState<string | null>(null)
   const [referenceMap, setReferenceMap] = useState<ReferenceMap | null>(null)
+  // Which elevation product the sector resolved to. Absent in DEMO, which has
+  // no georeferenced sector to match a DEM against.
+  const [demSelection, setDemSelection] = useState<DemSelection | null>(null)
   const [inspectorView, setInspectorView] = useState<InspectorView>('image')
   // Landing page and working console are distinct screens, not one blended view.
   const [appView, setAppView] = useState<'home' | 'console'>('home')
@@ -214,6 +222,11 @@ function App() {
 
       const terrain: PlannerTerrain = await terrainRes.json()
       setTerrainData(terrain)
+      // Before the route: this is a cheap lookup, while planning a path across
+      // the full DEM takes seconds. Sequenced after it, the elevation-source
+      // panel keeps showing the previous mode's DEM for as long as A* runs,
+      // which reads as the panel being wrong rather than merely late.
+      await fetchDemSelection()
       // No localization fix exists on first load, so the route starts from the
       // labelled demo cell.
       await fetchRoute(terrain, DEMO_START_CELL, 'demo-fallback')
@@ -263,6 +276,22 @@ function App() {
       setReferenceMap(await res.json())
     } catch (err: any) {
       console.warn(err)
+    }
+  }
+
+  /**
+   * Which DEM the sector is standing on.
+   *
+   * Returns 409 in DEMO, which has no georeferenced sector to match against -
+   * that is a correct answer, not an error, so it clears the panel rather than
+   * surfacing a failure.
+   */
+  const fetchDemSelection = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/terrain/dem`)
+      setDemSelection(res.ok ? await res.json() : null)
+    } catch {
+      setDemSelection(null)
     }
   }
 
@@ -472,6 +501,8 @@ function App() {
               cameraMode={cameraMode}
               driveMode={driveMode}
               isPlaying={roverPlaying}
+              timeScale={timeScale}
+              speedProfileId={speedProfileId}
               resetSignal={roverReset}
               startPoint={startPoint}
               poseRef={roverPoseRef}
@@ -500,6 +531,13 @@ function App() {
               <div><span>Heading</span><b>{telemetry.heading_deg.toFixed(0)}&deg;</b></div>
               <div><span>Elevation</span><b>{telemetry.elevation_m.toFixed(1)} m</b></div>
               <div><span>Slope</span><b className={telemetry.slope_deg > 18 ? 'hud-warn' : ''}>{telemetry.slope_deg.toFixed(1)}&deg;</b></div>
+              <div>
+                <span>Grade</span>
+                <b className={telemetry.slipping ? 'hud-warn' : ''}>
+                  {telemetry.grade_percent > 0 ? '+' : ''}{telemetry.grade_percent.toFixed(0)}%
+                  {telemetry.grade_percent > 1 ? ' climb' : telemetry.grade_percent < -1 ? ' descent' : ''}
+                </b>
+              </div>
               <div><span>Driven</span><b>{(telemetry.distance_m / 1000).toFixed(2)} km</b></div>
               {telemetry.traversability !== null && (
                 <div>
@@ -512,6 +550,12 @@ function App() {
                 </div>
               )}
             </div>
+            {!telemetry.speed_is_physical && (
+              <div className="hud-note">{telemetry.speed_profile} &mdash; speeds not to scale</div>
+            )}
+            {telemetry.slipping && (
+              <div className="hud-alert">TRACTION LOST &mdash; gravity exceeds grip</div>
+            )}
             {telemetry.mode === 'free' && (
               <div className="hud-keys">WASD / arrows &middot; space to brake</div>
             )}
@@ -660,6 +704,42 @@ function App() {
             </button>
           </div>
 
+          <div className="button-group row">
+            {SPEED_PROFILES.map((p) => (
+              <button
+                key={p.id}
+                className={speedProfileId === p.id ? 'active' : ''}
+                onClick={() => setSpeedProfileId(p.id)}
+                title={p.note}
+              >
+                {p.label} · {p.maxForward} m/s
+              </button>
+            ))}
+          </div>
+          {!profileById(speedProfileId).physical && (
+            <div className="hint">
+              Faster than any rover that has driven on the Moon. Slope still costs
+              the same share of drive, and the 26.6&deg; climb limit is unchanged.
+            </div>
+          )}
+
+          <div className="button-group row">
+            {[1, 4, 10].map((scale) => (
+              <button
+                key={scale}
+                className={timeScale === scale ? 'active' : ''}
+                onClick={() => setTimeScale(scale)}
+                title={
+                  scale === 1
+                    ? 'Real time. Lunar gravity, real grades, Apollo-rover top speed.'
+                    : `Clock runs ${scale}x faster. The physics is unchanged.`
+                }
+              >
+                {scale}&times;
+              </button>
+            ))}
+          </div>
+
           {driveMode === 'free' ? (
             <div className="drive-help">
               <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to drive</span>
@@ -702,6 +782,56 @@ function App() {
         {terrainData && (
           <div className="section">
             <h2>Terrain metrics</h2>
+            <div className="metric-card">
+              <div className="metric-label">Elevation source</div>
+              {demSelection?.selected ? (
+                <>
+                  <div className="metric-value">{demSelection.selected.product_id}</div>
+                  <div className="hint">
+                    {demSelection.selected.kind === 'polar'
+                      ? 'polar stereographic'
+                      : 'simple cylindrical'}{' '}
+                    &middot; posted at {demSelection.selected.posting_m} m
+                    {demSelection.elevation?.resample_factor
+                      ? `, resampled ${demSelection.elevation.resample_factor}\u00d7 to the imagery grid`
+                      : ''}
+                  </div>
+                </>
+              ) : demSelection?.elevation?.is_synthetic ? (
+                <>
+                  <div className="metric-value">
+                    {demSelection.elevation.product ?? 'Generated'}
+                  </div>
+                  <div className="hint">
+                    Synthetic elevation for {demSelection.mode ?? 'this mode'}. Switch to
+                    Real (data/raw) for a measured DEM.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="metric-value">Generated</div>
+                  <div className="hint">
+                    No DEM covers this sector, so elevation is synthetic. Hazards
+                    are still measured.
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Products present but not covering this ground. Listed rather
+                than hidden: a DEM of the wrong region reads perfectly well. */}
+            {(demSelection?.available ?? []).filter((d) => d.covers_point === false).length > 0 && (
+              <div className="metric-card">
+                <div className="metric-label">Not used here</div>
+                {demSelection!.available
+                  .filter((d) => d.covers_point === false)
+                  .map((d) => (
+                    <div key={d.product_id} className="hint">
+                      {d.product_id} &mdash; does not cover this sector
+                    </div>
+                  ))}
+              </div>
+            )}
             <div className="metric-card">
               <div className="metric-label">Elevation Range (m)</div>
               <div className="metric-value">{terrainData.min_elevation.toFixed(1)} to {terrainData.max_elevation.toFixed(1)}</div>

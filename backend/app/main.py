@@ -171,15 +171,20 @@ def _real_dem_provider(basemap):
     taking the sector down, but it says so in the returned description instead
     of passing the substitute off as measured.
     """
-    label = data_manager.get_raw_dem_label()
-    if label is not None:
-        try:
-            from lunar_platform.terrain.lola_dem import LolaPolarDEM, SectorDEMProvider
+    from lunar_platform.terrain.dem_registry import describe_selection, discover_dems, select_dem
+    from lunar_platform.terrain.lola_dem import SectorDEMProvider
 
-            elevation = LolaPolarDEM(label).sample_sector(basemap)
-            return SectorDEMProvider(elevation), elevation
-        except Exception as exc:
-            _simulation_cache["elevation_error"] = str(exc)
+    centre = basemap.lonlat_at(basemap.width_m / 2.0, basemap.height_m / 2.0)
+    if centre is not None:
+        candidates = discover_dems(data_manager.raw_dir / "dem")
+        _simulation_cache["dem_selection"] = describe_selection(candidates, *centre)
+        chosen = select_dem(candidates, *centre)
+        if chosen is not None:
+            try:
+                elevation = chosen.dem.sample_sector(basemap)
+                return SectorDEMProvider(elevation), elevation
+            except Exception as exc:
+                _simulation_cache["elevation_error"] = str(exc)
 
     return (
         SyntheticDEMProvider(
@@ -716,6 +721,62 @@ def get_simulation_basemap_image(max_size: int = 1024):
     if not ok:
         raise HTTPException(status_code=500, detail="Could not encode the basemap")
     return Response(content=encoded.tobytes(), media_type="image/png")
+
+
+@app.get("/terrain/dem")
+def get_dem_selection():
+    """
+    Which elevation product is in use here, and what else was available.
+
+    Coverage is the hard constraint: a DEM of the wrong region reads cleanly
+    and produces perfectly plausible terrain, so the ones that do not contain
+    the sector are listed with covers_point false rather than quietly ignored.
+    """
+    from lunar_platform.terrain.dem_registry import describe_selection, discover_dems
+
+    candidates = discover_dems(data_manager.raw_dir / "dem")
+
+    # Report what this mode is ACTUALLY standing on, not what would cover the
+    # sector if it were. Only REAL_RAW resolves a DEM by coverage; the other
+    # modes read a prepared file, and naming a LOLA product while serving demo
+    # elevation would be exactly the misattribution this endpoint exists to
+    # prevent.
+    if data_manager.active_mode != DataMode.REAL_RAW:
+        dem_path = data_manager.get_dem_path()
+        return {
+            "sector_id": data_manager.active_sector,
+            "mode": data_manager.active_mode.value,
+            "point": None,
+            "selected": None,
+            "available": [
+                {**c.to_dict(), "covers_point": None} for c in candidates
+            ],
+            "elevation": {
+                "product": dem_path.name if dem_path.exists() else None,
+                "is_synthetic": True,
+            },
+            "note": (
+                f"{data_manager.active_mode.value} reads its elevation from "
+                f"{dem_path}, not from a DEM matched to the sector by coverage. "
+                "The products listed are present but are not what this mode is using."
+            ),
+        }
+
+    basemap = _simulation_basemap()
+    centre = basemap.lonlat_at(basemap.width_m / 2.0, basemap.height_m / 2.0)
+    if centre is None:
+        raise HTTPException(
+            status_code=409,
+            detail="The sector is not georeferenced, so no DEM can be matched to it.",
+        )
+
+    selection = describe_selection(candidates, *centre)
+    selection["sector_id"] = data_manager.active_sector
+    selection["mode"] = data_manager.active_mode.value
+    elevation = _simulation_cache.get("elevation")
+    if elevation:
+        selection["elevation"] = elevation
+    return selection
 
 
 @app.get("/reference/nac")

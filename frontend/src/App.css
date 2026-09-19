@@ -1047,6 +1047,24 @@ button.active {
   color: #ffb347 !important;
 }
 
+.hud-note {
+  margin-top: 8px;
+  color: #8b93a3;
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+}
+
+.hud-alert {
+  margin-top: 8px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  background: rgba(255, 179, 71, 0.16);
+  border: 1px solid rgba(255, 179, 71, 0.45);
+  color: #ffb347;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
 .hud-keys {
   margin-top: 9px;
   padding-top: 8px;

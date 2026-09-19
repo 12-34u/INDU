@@ -511,8 +511,9 @@ def _evaluate_quality_gate(
 
     min_matches = int(config.get("min_matches", 30))
     min_inlier_ratio = float(config.get("min_inlier_ratio", 0.35))
-    max_rmse = float(config.get("max_rmse_px", 5.0))
+    max_rmse = float(config.get("max_rmse_px", 3.0))
     min_coverage = float(config.get("min_spatial_coverage", 0.30))
+    max_gini = float(config.get("max_distribution_gini", 0.65))
 
     minimum_sample = MODEL_MIN_SAMPLES.get(model_type, 4)
     degeneracy_floor = minimum_sample * DEGENERACY_FACTOR
@@ -541,11 +542,24 @@ def _evaluate_quality_gate(
                 f"Inlier spatial coverage {coverage:.3f} is below the configured minimum "
                 f"of {min_coverage}; the transform is constrained in only part of the frame."
             )
+        # Coverage and evenness are different questions. A set occupying many
+        # cells can still be piled into a few of them, which constrains the
+        # transform far less than the occupied fraction suggests.
+        spread = distribution_metrics(pts_source[inlier_mask], width, height)
+        if spread["gini"] > max_gini:
+            reasons.append(
+                f"Inlier distribution gini {spread['gini']:.3f} exceeds the configured "
+                f"maximum of {max_gini}; the matches occupy the frame unevenly."
+            )
+
         rmse = compute_reprojection_rmse(
             pts_source[inlier_mask], pts_reference[inlier_mask], transform
         )
         if rmse > max_rmse:
-            reasons.append(f"RMSE {rmse:.3f} px exceeds the configured maximum of {max_rmse}.")
+            reasons.append(
+                f"Reprojection RMSE {rmse:.3f} px exceeds the configured maximum of "
+                f"{max_rmse} px; the model does not explain the inliers that selected it."
+            )
     else:
         reasons.append("No verified inliers.")
 

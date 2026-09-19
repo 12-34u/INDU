@@ -82,6 +82,24 @@ as NaN and `valid_data_fraction` counts it as missing.
 Effect of the three together: **0 candidate matches -> 26**, and the pipeline
 now runs end to end instead of aborting at the matching stage.
 
+**P1-2 Generic CLI** - `scripts/register.py`. Takes any pair GDAL can open
+(`--source`/`--reference`), falls back to whatever is under data/raw, and exits
+non-zero when the gates fail so it can be scripted. `--compare-representations`
+measures every illumination representation on the pair; `--self-check` runs the
+controlled validation.
+
+**Quality gates reshaped.** `max_rmse_px` was being read as the sub-pixel
+requirement, which is the wrong quantity: it is the reprojection residual of
+the matched points and carries match noise as well as model error. Holding it
+to 1 px rejected a registration whose actual accuracy was 0.4 px - and because
+the registered product is only written when the gates pass, that also stopped
+the product the brief asks for being produced at all. It is now a model-fit
+check tied to the RANSAC threshold (3.0 px), and the sub-pixel requirement is a
+separate criterion, `max_accuracy_rmse_px`, evaluated against known truth and
+reported as SUB-PIXEL yes/no. A distribution Gini gate was added alongside:
+coverage counts occupied cells, which a set piled into a few of them can still
+satisfy.
+
 **P1-1 Sub-pixel accuracy - met, on the controlled case.** Two different
 numbers had been conflated. `rmse_px` is the reprojection residual of the
 matched points and reads 1.36 px. The accuracy of the *recovered transform*

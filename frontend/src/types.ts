@@ -39,6 +39,14 @@ export interface RoverTelemetry {
   speed_mps: number
   elevation_m: number
   slope_deg: number
+  /** Rise over run along the direction of travel. Positive is uphill. */
+  grade_percent: number
+  /** Gravity along the slope exceeds what the wheels can hold. */
+  slipping: boolean
+  /** Name of the active speed profile. */
+  speed_profile: string
+  /** False when the profile's speeds are deliberately faster than reality. */
+  speed_is_physical: boolean
   traversability: number | null
   distance_m: number
   mode: DriveMode
@@ -199,6 +207,34 @@ export interface VisibleTruth {
   diameter_m: number
   x_m: number
   y_m: number
+}
+
+/** Which elevation product the sector is using, and what else was available. */
+export interface DemCandidateInfo {
+  product_id: string
+  path: string
+  kind: 'polar' | 'equirectangular'
+  posting_m: number
+  /** null when the mode does not resolve a DEM by coverage at all. */
+  covers_point?: boolean | null
+}
+
+export interface DemSelection {
+  point: { longitude: number; latitude: number }
+  selected: DemCandidateInfo | null
+  available: DemCandidateInfo[]
+  note: string
+  sector_id?: string
+  mode?: string
+  elevation?: {
+    product?: string
+    is_synthetic?: boolean
+    source_gsd_m?: number
+    gsd_m?: number
+    resample_factor?: number
+    relief_m?: number
+    notes?: string[]
+  }
 }
 
 /** Provenance of the real imagery the simulation is standing on. */

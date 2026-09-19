@@ -2,8 +2,23 @@ registration:
   default_matcher: "sift"
   min_matches: 30
   min_inlier_ratio: 0.35
-  max_rmse_px: 5.0
+  # Model-fit check, not the accuracy requirement. This is the reprojection
+  # residual of the verified matches, so it carries match noise as well as
+  # model error; holding it to 1 px would reject registrations whose actual
+  # accuracy is far better than 1 px. Tied to ransac_threshold: a fit that
+  # cannot explain its own inliers to within the threshold that selected them
+  # is not a fit.
+  max_rmse_px: 3.0
   min_spatial_coverage: 0.30
+  # Coverage counts occupied cells, which a set piled into a few cells can
+  # still satisfy. Gini measures how evenly they are filled: 0 is perfectly
+  # even, near 1 means concentrated.
+  max_distribution_gini: 0.65
+  # The sub-pixel requirement itself, measured as displacement of the recovered
+  # transform against a known one. This is registration accuracy; max_rmse_px
+  # above is a residual. It can only be evaluated where truth exists, which
+  # without a camera model means the controlled self-check.
+  max_accuracy_rmse_px: 1.0
   geometry:
     default_model: "similarity" # or affine, homography
     ransac_threshold: 3.0
