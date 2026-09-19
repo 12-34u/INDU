@@ -1,0 +1,32 @@
+# Simulation driven by real mission data under data/raw.
+#
+# The basemap is a tile of the Chandrayaan-2 OHRC browse product, anchored on
+# the Moon through the bundle's own NAV geometry grid. Nothing here is written
+# back to data/raw.
+simulation:
+  # Sector extent cut from the strip. The strip is about 2880 m across, so a
+  # larger square than that cannot be supplied and will be clamped.
+  sector_size_m: 2400.0
+
+  observation:
+    # Square observation, in pixels.
+    size_px: 256
+    # Metres per observation pixel. "native" samples at the basemap's own
+    # resolution; a smaller number magnifies the browse product rather than
+    # revealing detail it does not carry.
+    gsd_m: native
+
+  reference_map:
+    # Detections smaller than this do not survive being re-observed from
+    # another bearing, so they make poor landmarks.
+    min_diameter_m: 20.0
+    max_craters: 400
+
+  localization:
+    # Feature budget per frame for registering an observation to the basemap.
+    n_features: 4000
+    min_inliers: 8
+    # A fix whose transform disagrees with the rover's known heading or with
+    # the known resolution ratio is rejected rather than reported.
+    max_heading_residual_deg: 5.0
+    max_scale_residual: 0.10

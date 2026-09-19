@@ -333,7 +333,31 @@ REAL_LOCAL Mode
 
 REAL_LOCAL mode is designed to consume a prepared local DEM for the selected lunar sector.
 
-Large raw scientific products are not used directly by the application.
+REAL_RAW Mode
+
+REAL_RAW runs the simulation directly on the mission bundles under `data/raw`,
+with no preparation step. The rover's view is cut from the Chandrayaan-2 OHRC
+browse product rather than rendered, the landmarks are craters detected in that
+imagery, and the position is recovered by registering the observation against
+the sector basemap.
+
+Only the members that are cheap to read are touched, in place: the browse
+raster (7.8 MB) and the NAV geometry grid (3.9 MB). The 1.1 GB full-resolution
+image member is catalogued and never read, and nothing under `data/raw` is
+modified, extracted or rewritten.
+
+The bundle's NAV grid anchors the sector on the Moon, so a position in this
+mode is reported as longitude/latitude as well as sector metres.
+
+Elevation comes from the LOLA south polar DEM (`ldem_60s_60m`, 60 m/px,
+covering 60°S to the pole) sampled into the sector frame through the sector's
+own longitude/latitude, so the elevation grid and the imagery line up by
+construction. It is about twenty times coarser than the imagery and says so.
+The hazard layer is built from the craters detected in the imagery.
+
+If no DEM is present the mode still runs, with generated elevation on the
+basemap's grid, and reports itself as synthetic rather than passing the
+substitute off as measured.
 
 12. Terrain Layers
 
@@ -613,10 +637,10 @@ The application uses a DataManager to control which dataset mode is active.
              ┌───────┴───────┐
              │               │
              ▼               ▼
-           DEMO          REAL_LOCAL
-             │               │
-             ▼               ▼
-        Demo assets      Local assets
+           DEMO       REAL_LOCAL     REAL_RAW
+             │               │             │
+             ▼               ▼             ▼
+        Demo assets      Local assets   data/raw, read in place
 
 The data mode can be inspected through:
 
@@ -638,6 +662,17 @@ GET  /data/status
 POST /data/mode
 GET  /terrain
 POST /plan_path
+GET  /reference_map
+POST /perception
+GET  /simulation/basemap
+GET  /simulation/basemap.png
+GET  /reference/nac
+
+`/perception` runs the observation pipeline. It follows the active data mode,
+and `use_real_data` on the request overrides that per call. `/simulation/basemap`
+reports where the real imagery came from and how it was placed on the Moon.
+`/reference/nac` places the LROC NAC reference image using SPICE and reports how
+much of the sector it covers.
 
 Additional registration endpoints can be added as the image-registration subsystem is integrated.
 
@@ -653,12 +688,13 @@ lunar-localization-platform/
 │   ├── navigation.yaml
 │   ├── registration.yaml
 │   ├── scaling.yaml
-│   └── sector.yaml
+│   ├── sector.yaml
+│   └── simulation.yaml
 │
 ├── data/
 │   ├── cache/
 │   ├── demo/
-│   ├── raw/
+│   ├── raw/          (mission data: imagery, DEM, SPICE kernels)
 │   ├── reference_catalog/
 │   └── sector/
 │
@@ -930,13 +966,62 @@ LightGlue
 
 Both can feed into the same robust geometric verification layer.
 
+36a. Real Data Status (current)
+
+CURRENT MVP:
+
+    OHRC source (browse product, ~2.4 m/px)
+      + LRO NAC reference
+      + NAV geometry grid
+            |
+            v
+      registration
+            |
+            v
+      match points -> metrics -> registered image
+
+NOT YET INTEGRATED:
+
+    DEM
+    SPICE kernels
+    precise camera geometry
+    full terrain-referenced localization
+
+Both DEM and SPICE are reported as capability flags via GET /data/capabilities
+and neither blocks registration.
+
+Raw data is immutable. The 1.1 GB OHRC image member inside the archive is
+catalogued but never extracted or read; registration uses the bundle's browse
+product, which GDAL reads in place through /vsizip/. See data/raw/README.md.
+
+Preparation and inspection (report-only by default):
+
+    PYTHONPATH=src python scripts/prepare_real_data.py
+    PYTHONPATH=src python scripts/prepare_real_data.py --geometry
+    PYTHONPATH=src python scripts/prepare_real_data.py --register
+    PYTHONPATH=src python scripts/prepare_real_data.py --self-check
+
+Measured results on the real data:
+
+  - OHRC vs LRO NAC: 0 candidate matches at working resolution. The NAC label
+    carries no geographic metadata, so without SPICE there is no way to
+    establish whether the two strips overlap. Reported as-is.
+
+  - Controlled self-check (real OHRC tile, known 7 deg rotation / 0.82 scale /
+    gamma 1.7): 175 verified inliers, inlier ratio 0.946, RMSE 1.25 px,
+    spatial coverage 0.62, recovered transform within 0.18 px mean of the
+    known transform.
+
+The self-check measures the pipeline on real lunar texture. It does not
+validate cross-instrument registration.
+
 37. Current Status
 Completed
 [x] Project architecture
 [x] Backend structure
 [x] Frontend structure
 [x] DataManager
-[x] DEMO / REAL_LOCAL data modes
+[x] DEMO / REAL_LOCAL / REAL_RAW data modes
 [x] Synthetic DEM provider
 [x] Local DEM provider
 [x] Terrain processing

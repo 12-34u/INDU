@@ -87,8 +87,25 @@ outputs/
 # =========================
 # Large raw scientific data
 # =========================
+# data/raw is immutable external mission data and is never committed.
 data/raw/
 !data/raw/.gitkeep
+!data/raw/README.md
+
+# Derived working products prepared from data/raw
+data/working/
+!data/working/.gitkeep
+
+# Large imagery must never be committed by accident, wherever it lands.
+*.zip
+*.IMG
+*.img
+*.cub
+*.jp2
+# Deliberately selected small crops stay tracked.
+!data/demo/**/*.tif
+!data/demo/**/*.png
+!tests/fixtures/**
 
 # Note: Global exclusions for *.tif, *.img, *.zip, etc. have been removed.
 # Small, deliberately selected crops (e.g., in data/demo/ or data/sector/) may be committed.
@@ -129,3 +146,8 @@ Thumbs.db
 # =========================
 .task/
 .task.md.local
+
+# A second checkout of this project that lives inside it. It is its own git
+# repository, so `git add -A` stages it as a gitlink rather than as files,
+# and it also breaks pytest collection with duplicate test basenames.
+/INDU/

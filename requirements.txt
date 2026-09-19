@@ -6,3 +6,7 @@ fastapi
 uvicorn
 pydantic
 scipy
+# SPICE geometry: needed to place the LROC NAC image on the Moon, since its
+# label carries no geographic metadata. Optional - the rest of the platform
+# runs without it and reports the capability as unavailable.
+spiceypy

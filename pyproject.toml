@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+# Collect only the project's own suites. A second copy of the tree sitting in
+# a subdirectory (a stray checkout, a build staging area) otherwise gets
+# collected too, and the duplicate test basenames abort the whole run with an
+# import file mismatch before anything executes.
+testpaths = ["tests", "backend/tests"]
+norecursedirs = ["INDU", ".venv", "node_modules", "data", "outputs", "frontend"]
