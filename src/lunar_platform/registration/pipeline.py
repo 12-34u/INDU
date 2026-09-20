@@ -46,6 +46,33 @@ class RegistrationStage:
 
 
 @dataclass
+class FrameMapping:
+    """
+    How working-resolution pixels relate to a product's own pixels.
+
+    Registration runs on decimated, possibly windowed copies of both images, so
+    its transform lives in working coordinates. Anything that wants a position
+    on the ground has to get back to native pixels first, and that needs the
+    window that was read and the factor it was decimated by. Recording them
+    here keeps that reconstruction out of every caller.
+    """
+
+    window: Optional[tuple] = None  # (col_off, row_off, width, height), native px
+    decimation: float = 1.0
+
+    def to_native(self, column: float, row: float) -> tuple[float, float]:
+        scale = self.decimation if self.decimation > 0 else 1.0
+        col_off, row_off = (self.window[0], self.window[1]) if self.window else (0.0, 0.0)
+        return col_off + column / scale, row_off + row / scale
+
+    def to_dict(self) -> dict:
+        return {
+            "window": list(self.window) if self.window else None,
+            "decimation": round(float(self.decimation), 6),
+        }
+
+
+@dataclass
 class RegistrationOutcome:
     scene_id: str
     succeeded: bool
@@ -58,6 +85,8 @@ class RegistrationOutcome:
     reference_image: Optional[np.ndarray] = None
     registered_image: Optional[np.ndarray] = None
     notes: list[str] = field(default_factory=list)
+    source_frame: Optional[FrameMapping] = None
+    reference_frame: Optional[FrameMapping] = None
 
 
 class _Timer:
@@ -241,6 +270,9 @@ def run_registration(
             window=reference_window,
             out_shape=plan.reference_out_shape,
         )
+    source_frame = FrameMapping(window=source_window, decimation=source_scale)
+    reference_frame = FrameMapping(window=reference_window, decimation=reference_scale)
+
     stages.append(
         RegistrationStage(
             "load",
@@ -317,6 +349,8 @@ def run_registration(
             source_image=source_8,
             reference_image=reference_8,
             notes=notes,
+            source_frame=source_frame,
+            reference_frame=reference_frame,
         )
 
     with _Timer() as t:
@@ -479,6 +513,8 @@ def run_registration(
         reference_image=reference_8,
         registered_image=registered,
         notes=notes,
+        source_frame=source_frame,
+        reference_frame=reference_frame,
     )
 
 
