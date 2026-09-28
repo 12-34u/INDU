@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Tuple, Dict, Any
 import base64
 import json
+import os
 import cv2
 import numpy as np
 from pathlib import Path
@@ -36,9 +37,23 @@ from lunar_platform.utils.config import get_config
 
 app = FastAPI(title="Lunar Localization & Traversability API")
 
+# Allowed browser origins, comma-separated, from the environment. Deployed
+# frontends live on a different host from the API, so this has to be
+# configurable per environment rather than compiled in.
+#
+# Explicit origins rather than "*": a wildcard cannot be combined with
+# credentials - browsers reject that pairing outright - so the previous
+# allow_origins=["*"] with allow_credentials=True was not a working CORS
+# policy for any credentialed request.
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

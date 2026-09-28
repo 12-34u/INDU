@@ -1,6 +1,7 @@
 import type { DataCapabilities, RegistrationResult } from '../types'
 
-const API_BASE = 'http://localhost:8000'
+// Aliased so the call sites below stay unchanged.
+import { API as API_BASE } from '../config'
 
 interface Props {
   capabilities: DataCapabilities | null

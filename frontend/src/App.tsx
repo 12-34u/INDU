@@ -26,7 +26,8 @@ import type {
 import { SPEED_PROFILES, DEFAULT_PROFILE_ID, profileById } from './lib/roverProfiles'
 import './App.css'
 
-const API_BASE = 'http://localhost:8000'
+// Aliased so the call sites below stay unchanged.
+import { API as API_BASE } from './config'
 
 /**
  * DEM geometry the planner searches. These fields come from /terrain; they are

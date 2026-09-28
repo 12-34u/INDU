@@ -1,0 +1,29 @@
+# Mission data archive: 6.2 GB, and nothing in the deployed image reads it.
+data/raw
+# Derived at runtime; must not be baked in.
+data/cache
+data/working
+outputs
+
+# Local environments and build artefacts
+.venv
+backend/.venv
+frontend/node_modules
+frontend/dist
+**/__pycache__
+**/*.pyc
+.pytest_cache
+
+# Repository and editor noise
+.git
+.gitignore
+.claude
+**/.DS_Store
+
+# A stray second checkout of this project that lives inside it.
+INDU
+
+# Not needed to serve the API
+frontend
+docs
+tests

@@ -1189,3 +1189,93 @@ The result is a lightweight foundation for experimenting with lunar image regist
 License
 
 See LICENSE.
+43. Deployment
+
+The backend runs as a container on Render; the frontend is a static build on
+Vercel. They are deployed independently and only need to agree on two values:
+the API's URL and the origin it will accept requests from.
+
+Backend (Render, Docker)
+
+Point a Render Web Service at this repository with the root Dockerfile. No
+build command or start command is needed - the image defines both.
+
+| Setting | Value |
+|---|---|
+| Environment | Docker |
+| Dockerfile path | `./Dockerfile` |
+| Health check path | `/data/status` |
+
+Environment variables:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated browser origins allowed to call the API. Set this to the deployed frontend's URL, e.g. `https://your-app.vercel.app`. |
+| `DATA_MODE` | `DEMO` | `DEMO`, `REAL_LOCAL` or `REAL_RAW`. |
+| `PORT` | `8000` | Injected by Render; the image binds whatever it is given. |
+
+`CORS_ORIGINS` lists explicit origins rather than accepting a wildcard,
+because a wildcard cannot be combined with credentials - browsers reject that
+pairing - so `*` would not be a working policy for any credentialed request.
+
+`DATA_MODE` is `DEMO` unless set, and DEMO is the only mode a bare deployment
+can serve: the real modes need products under `data/raw`, which the image
+deliberately does not contain. Setting `DATA_MODE=REAL_LOCAL` or `REAL_RAW`
+without those assets leaves the service in DEMO and reports the reason through
+`/data/status`:
+
+```json
+{
+  "mode": "DEMO",
+  "requested_mode": "REAL_LOCAL",
+  "mode_error": "Real local sector data for sector_001 is missing. ..."
+}
+```
+
+It never falls back silently. A deployment configured for real data that
+quietly serves the demo is indistinguishable from one that is working.
+
+What the image contains
+
+Only `backend/`, `src/`, `configs/` and the small prepared assets under
+`data/demo`, `data/sector` and `data/reference_catalog` - about 9 MB. The
+`data/raw` mission archive is 6.2 GB, nothing the API serves reads it, and
+`.dockerignore` excludes it along with `data/cache`, `outputs`, the virtual
+environments and `node_modules`.
+
+`requirements-optional.txt` (torch, lightglue) is not installed. Registration
+uses its SIFT + MAGSAC++ baseline, which is the configured default in any
+case; `registration/lightglue_adapter.py` imports the optional dependencies
+lazily and reports them as unavailable when absent.
+
+Frontend (Vercel)
+
+| Setting | Value |
+|---|---|
+| Root directory | `frontend` |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+
+Environment variable:
+
+| Variable | Value |
+|---|---|
+| `VITE_API_URL` | The Render service URL, e.g. `https://your-api.onrender.com` |
+
+Vite inlines environment variables at build time, so `VITE_API_URL` is baked
+into the bundle rather than read when the page loads. Changing it requires a
+redeploy, not just an edit in the dashboard. Left unset, the bundle falls back
+to `http://127.0.0.1:8000` so a local checkout works with no configuration;
+`frontend/.env.example` records this.
+
+Free-tier cold starts
+
+Render's free tier stops a service after a period without traffic and starts
+it again on the next request. The first request after an idle period can take
+roughly 30 to 60 seconds while the container boots, and the browser will
+report it as a failed fetch if it gives up first. This is a property of the
+tier, not of the application. Either accept the delay, keep the service warm
+by polling `/data/status`, or use a paid instance.
+
+`/data/status` is the health check because it needs no authentication, reads
+no rasters and returns in about 15 ms.

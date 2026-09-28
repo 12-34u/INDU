@@ -32,10 +32,51 @@ class DataManager:
         # Default active mode
         self.active_mode = DataMode.DEMO
         self.active_sector = "sector_001"
-        
+
+        # What DATA_MODE asked for, and why it was not honoured. Reported
+        # through get_status rather than swallowed: a deployment configured for
+        # real data that quietly serves the demo is indistinguishable from one
+        # that is working.
+        self.requested_mode: Optional[str] = None
+        self.mode_error: Optional[str] = None
+
         # Determine initial fallback if requested sector data doesn't exist
         if not self._check_real_local_available(self.active_sector):
             self.active_mode = DataMode.DEMO
+
+        self._apply_environment_mode()
+
+    def _apply_environment_mode(self) -> None:
+        """
+        Honour DATA_MODE from the environment, or report why it could not be.
+
+        Unset or "DEMO" is the default and the only mode a bare deployment can
+        serve: the real modes need products that are not shipped in the image.
+        A requested mode whose assets are missing leaves the manager in DEMO
+        and records the reason, so /data/status can state it.
+        """
+        requested = os.environ.get("DATA_MODE", "").strip()
+        if not requested:
+            return
+
+        self.requested_mode = requested.upper()
+        if self.requested_mode == DataMode.DEMO.value:
+            return
+
+        try:
+            mode = DataMode(self.requested_mode)
+        except ValueError:
+            self.mode_error = (
+                f"DATA_MODE={requested!r} is not a recognised mode. "
+                f"Expected one of: {', '.join(m.value for m in DataMode)}."
+            )
+            return
+
+        try:
+            self.set_mode(mode, self.active_sector)
+        except Exception as exc:
+            # Stay in DEMO, but say so. Never silently.
+            self.mode_error = str(exc)
             
     def _check_real_local_available(self, sector_id: str) -> bool:
         """Checks if the required small sector files exist."""
@@ -69,12 +110,16 @@ class DataManager:
         self.active_sector = sector_id
 
     def get_status(self) -> Dict[str, Any]:
-        return {
+        status = {
             "mode": self.active_mode.value,
             "sector": self.active_sector,
             "real_local_available": self._check_real_local_available(self.active_sector),
             "real_raw_available": self.get_simulation_source() is not None,
         }
+        if self.requested_mode and self.requested_mode != self.active_mode.value:
+            status["requested_mode"] = self.requested_mode
+            status["mode_error"] = self.mode_error
+        return status
 
     def get_sector_manifest(self) -> Dict[str, Any]:
         """The sector's manifest, or an empty dict when it has none."""

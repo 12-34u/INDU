@@ -1,0 +1,13 @@
+# Optional, heavy dependencies. NOT installed in the deployed image.
+#
+# The application must run without these. Registration falls back to its
+# SIFT + MAGSAC++ baseline, which is the default matcher in any case
+# (configs/registration.yaml: default_matcher: "sift"), so nothing here is
+# required for a working deployment.
+#
+# Install locally with:  pip install -r requirements-optional.txt
+
+# Learned feature matching. See registration/lightglue_adapter.py, which
+# imports these lazily and reports them as unavailable when absent.
+torch
+lightglue
