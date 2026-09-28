@@ -8,15 +8,17 @@ FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
     PYTHONPATH=backend:src
 
 WORKDIR /app
 
 # Dependencies first, so application edits do not invalidate the layer.
-# requirements-optional.txt (torch, lightglue) is deliberately not installed.
+# Everything is pinned; requirements-optional.txt (torch, lightglue) is
+# deliberately not installed and the app runs without it.
 COPY requirements.txt ./
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt
 
 # Only what the API needs to run.
 COPY backend/ ./backend/
@@ -26,10 +28,21 @@ COPY data/demo/ ./data/demo/
 COPY data/sector/ ./data/sector/
 COPY data/reference_catalog/ ./data/reference_catalog/
 
-# Written at runtime; created here so the first request does not race to make them.
-RUN mkdir -p data/cache/terrain data/working/registration outputs
+# Written at runtime. Created here and owned by the unprivileged user, because
+# the first request would otherwise try to create them as a user that cannot.
+RUN mkdir -p data/cache/terrain data/working/registration outputs \
+    && useradd --create-home --uid 10001 appuser \
+    && chown -R appuser:appuser /app
+
+# Nothing here needs root, and a compromised process should not have it.
+USER appuser
 
 EXPOSE 8000
+
+# Render supplies its own health check; this one makes `docker run` locally
+# report the same thing. Uses urllib rather than curl, which slim lacks.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import os,urllib.request;urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('PORT','8000')+'/data/status',timeout=4)" || exit 1
 
 # Shell form so ${PORT} expands. Render injects PORT and expects the process to
 # bind it; a hardcoded port would be unreachable there.

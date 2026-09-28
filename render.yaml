@@ -1,0 +1,52 @@
+# Render Blueprint. Point Render at this repository and it reads the service
+# definition from here instead of the settings being filled in by hand.
+#
+# This uses Render's NATIVE PYTHON runtime rather than the Dockerfile. Both
+# work and both install the same pinned requirements; the native runtime is
+# the default here because it needs no working Docker locally, builds faster,
+# and has one less moving part. The Dockerfile is kept for running the API
+# anywhere else - switch this service to it by replacing the runtime and the
+# two commands with:
+#
+#     runtime: docker
+#     dockerfilePath: ./Dockerfile
+#
+services:
+  - type: web
+    name: indu-api
+    runtime: python
+    plan: free
+    region: oregon
+
+    buildCommand: pip install -r requirements.txt
+    # PYTHONPATH is set below rather than inline so it applies to any shell
+    # Render opens on the service, not only to this command.
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    # Cheap, unauthenticated, reads no rasters, returns in about 2 ms.
+    healthCheckPath: /data/status
+
+    envVars:
+      # The application is imported as `app.main` from backend/, and the
+      # science package as `lunar_platform` from src/. Without this the
+      # service starts and immediately fails to import.
+      - key: PYTHONPATH
+        value: backend:src
+
+      # Pin the interpreter. Render's default tracks a moving target, and the
+      # requirements are pinned to versions verified on 3.11.
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
+      # Browser origins allowed to call the API. Set this to the deployed
+      # frontend's URL once Vercel has issued one. Explicit origins rather
+      # than a wildcard: a wildcard cannot be combined with credentials.
+      - key: CORS_ORIGINS
+        sync: false
+
+      # DEMO is the only mode a bare deployment can serve. The real modes need
+      # products under data/raw, which is not in the repository.
+      - key: DATA_MODE
+        value: DEMO
+
+    # PORT is injected by Render; the start command binds whatever it is given.

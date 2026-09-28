@@ -1,12 +1,21 @@
-numpy
-opencv-python-headless
-rasterio
-pyyaml
-fastapi
-uvicorn
-pydantic
-scipy
+# Pinned. An unpinned build is reproducible only until the next release of
+# anything in this list, and a container rebuilt months later would silently
+# pull a different numpy or rasterio than the one this was verified against.
+# Versions below are the ones the test suite passes on.
+
+numpy==2.5.3
+scipy==1.18.1
+# Headless: the image has no display, and the GUI build pulls in X11 libraries
+# that would not work and should not be installed.
+opencv-python-headless==5.0.0.93
+rasterio==1.5.1
+PyYAML==6.0.3
+
+fastapi==0.141.1
+uvicorn==0.53.0
+pydantic==2.13.5
+
 # SPICE geometry: needed to place the LROC NAC image on the Moon, since its
-# label carries no geographic metadata. Optional - the rest of the platform
-# runs without it and reports the capability as unavailable.
-spiceypy
+# label carries no geographic metadata. The rest of the platform runs without
+# it and reports the capability as unavailable.
+spiceypy==8.2.0

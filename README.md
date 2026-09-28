@@ -1195,10 +1195,39 @@ The backend runs as a container on Render; the frontend is a static build on
 Vercel. They are deployed independently and only need to agree on two values:
 the API's URL and the origin it will accept requests from.
 
-Backend (Render, Docker)
+Backend (Render)
 
-Point a Render Web Service at this repository with the root Dockerfile. No
-build command or start command is needed - the image defines both.
+Two paths work and both install the same pinned requirements. The Blueprint
+uses Render's **native Python runtime**, which needs no Docker anywhere, builds
+faster, and has one less moving part. The Dockerfile is kept for running the
+API elsewhere.
+
+Verified from a clean git clone into a clean virtualenv: the pinned
+requirements install from scratch (including rasterio and
+opencv-python-headless, which need no apt packages), the start command boots,
+and every endpoint answers.
+
+| Setting | Value |
+|---|---|
+| Runtime | Python |
+| Build command | `pip install -r requirements.txt` |
+| Start command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Health check path | `/data/status` |
+
+`PYTHONPATH=backend:src` **must** be set. The application is imported as
+`app.main` from `backend/`, and the science package as `lunar_platform` from
+`src/`; without it the service starts and immediately fails to import.
+
+Backend (Render, Docker alternative)
+
+`render.yaml` in the repository root is a Blueprint: point Render at the repo
+and it reads the service definition - runtime, commands, health check path,
+environment variables - instead of the settings being filled in by hand. Only
+`CORS_ORIGINS` is left to be supplied, because its value is the frontend URL
+that does not exist until Vercel has issued one.
+
+To use the Dockerfile instead, replace the runtime and the two commands in
+`render.yaml` with `runtime: docker` and `dockerfilePath: ./Dockerfile`.
 
 | Setting | Value |
 |---|---|
@@ -1212,7 +1241,9 @@ Environment variables:
 |---|---|---|
 | `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated browser origins allowed to call the API. Set this to the deployed frontend's URL, e.g. `https://your-app.vercel.app`. |
 | `DATA_MODE` | `DEMO` | `DEMO`, `REAL_LOCAL` or `REAL_RAW`. |
-| `PORT` | `8000` | Injected by Render; the image binds whatever it is given. |
+| `PORT` | `8000` | Injected by Render; the start command binds whatever it is given. |
+| `PYTHONPATH` | - | Must be `backend:src` on the native runtime. The Dockerfile sets it itself. |
+| `PYTHON_VERSION` | - | `3.11.9`. Render's default tracks a moving target; the requirements are pinned to versions verified on 3.11. |
 
 `CORS_ORIGINS` lists explicit origins rather than accepting a wildcard,
 because a wildcard cannot be combined with credentials - browsers reject that
@@ -1248,6 +1279,37 @@ uses its SIFT + MAGSAC++ baseline, which is the configured default in any
 case; `registration/lightglue_adapter.py` imports the optional dependencies
 lazily and reports them as unavailable when absent.
 
+Dependencies are pinned to the versions the test suite passes on. An unpinned
+build is reproducible only until the next release of anything in the list, and
+a container rebuilt months later would silently pull a different numpy or
+rasterio than the one this was verified against.
+
+The container runs as an unprivileged user (uid 10001). Nothing it does needs
+root.
+
+Performance and timeouts
+
+Measured on the demo sector, warm:
+
+| Endpoint | Time |
+|---|---|
+| `/data/status` | ~2 ms |
+| `/terrain` | ~70 ms warm, ~110 ms cold |
+| `/reference_map` | ~3 ms |
+| `/perception` | ~220 ms |
+| `/plan_path` | **~6 s** |
+
+`/plan_path` runs A* over the full-resolution DEM - a million cells on the
+demo sector - and is by some margin the slowest thing the API does. On a free
+instance, which has less CPU than a development machine, expect it to be
+slower still. Every endpoint is a synchronous handler, so FastAPI runs it in a
+threadpool and a long plan does not block the health check or other requests;
+but a client with a short timeout will give up on it.
+
+`data/cache` and `data/working` are written at runtime on ephemeral disk. The
+terrain cache does not survive a restart, so the first `/terrain` after each
+cold start recomputes.
+
 Frontend (Vercel)
 
 | Setting | Value |
@@ -1267,6 +1329,20 @@ into the bundle rather than read when the page loads. Changing it requires a
 redeploy, not just an edit in the dashboard. Left unset, the bundle falls back
 to `http://127.0.0.1:8000` so a local checkout works with no configuration;
 `frontend/.env.example` records this.
+
+Deploying in order
+
+The two services each need the other's URL, so the first pass is done with
+placeholders:
+
+1. **Vercel first.** Deploy the frontend with `VITE_API_URL` unset. It builds
+   and serves; API calls fail until the backend exists, which is expected.
+   Vercel issues a URL.
+2. **Render.** Deploy the backend, setting `CORS_ORIGINS` to the Vercel URL
+   from step 1. Render issues a URL.
+3. **Back to Vercel.** Set `VITE_API_URL` to the Render URL and redeploy.
+   Vite inlines env vars at build time, so this needs a rebuild, not just a
+   settings change.
 
 Free-tier cold starts
 
