@@ -4,7 +4,9 @@
 # archive, nothing the API serves reads it, and the demo and sector assets the
 # app needs are three orders of magnitude smaller. The copy list below is
 # explicit for that reason: a blanket `COPY . .` would pull the archive in.
-FROM python:3.11-slim
+# 3.13, not 3.11: numpy, scipy and rasterio are pinned to releases that
+# declare requires-python >=3.12 and will not install on anything older.
+FROM python:3.13-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

@@ -34,9 +34,13 @@ services:
         value: backend:src
 
       # Pin the interpreter. Render's default tracks a moving target, and the
-      # requirements are pinned to versions verified on 3.11.
+      # requirements must not float with it. 3.13 is not optional here: numpy,
+      # scipy and rasterio are pinned to releases that declare
+      # requires-python >=3.12, so an earlier interpreter fails at pip install
+      # with "no matching distribution". 3.13.7 is the version the test suite
+      # passes on.
       - key: PYTHON_VERSION
-        value: "3.11.9"
+        value: "3.13.7"
 
       # Browser origins allowed to call the API. Set this to the deployed
       # frontend's URL once Vercel has issued one. Explicit origins rather
