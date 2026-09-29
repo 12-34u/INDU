@@ -38,9 +38,11 @@ htmlcov/
 # =========================
 # Environment / secrets
 # =========================
+# Real values, including the Vercel OIDC token in .env.local. The
+# negation for the committed examples lives with the `.env*` rule further
+# down, because the last matching pattern is the one that wins.
 .env
 .env.*
-!.env.example
 
 # =========================
 # Node / React / Vite
@@ -159,3 +161,7 @@ Thumbs.db
 /INDU/
 .vercel
 .env*
+# ...but the checked-in templates must stay committable. These negations
+# have to come after `.env*` above, not before it.
+!.env.example
+!**/.env.example
