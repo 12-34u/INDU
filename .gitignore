@@ -12,7 +12,9 @@ venv/
 env/
 ENV/
 .env/
-.python-version
+# .python-version is deliberately NOT ignored: Render's native Python
+# runtime reads it to pick the interpreter, and the pinned numpy, scipy
+# and rasterio require >=3.12. It has to be committed to take effect.
 
 # Packaging
 build/
