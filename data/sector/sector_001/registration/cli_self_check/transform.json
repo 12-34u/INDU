@@ -1,0 +1,23 @@
+{
+  "scene_id": "cli_self_check",
+  "model_type": "similarity",
+  "succeeded": true,
+  "matrix": [
+    [
+      1.2106100630307273,
+      -0.14850071326518857,
+      253.47991701351174
+    ],
+    [
+      0.14850071326518857,
+      1.2106100630307273,
+      -504.2168843316664
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "frame": "image-to-image; not georeferenced (no camera model in use)"
+}

@@ -492,6 +492,9 @@ function App() {
               referenceCraters={referenceMap?.craters}
               showLandmarks={showLandmarks}
               startSites={startSiteMarkers}
+              // Mode is in the URL so switching modes refetches rather than
+              // reusing the previous sector's imagery from cache.
+              photoTextureUrl={`${API_BASE}/sector/texture.png?max_size=2048&mode=${dataMode}`}
               activeStartSiteId={startSiteId}
             />
 

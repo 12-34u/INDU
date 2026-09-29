@@ -1,0 +1,140 @@
+{
+  "scene_id": "cli_self_check",
+  "generated_at": "2026-09-19T14:06:44.365934+00:00",
+  "succeeded": true,
+  "source_ref": "data/working/registration/sector_001/selfcheck_moving.png",
+  "reference_ref": "data/working/registration/sector_001/selfcheck_fixed.png",
+  "uses_dem": false,
+  "uses_spice": false,
+  "caveat": "Image-space registration only. Without a camera model or DEM these residuals describe agreement between two image planes, not ground accuracy.",
+  "metrics": {
+    "n_candidate_matches": 3815,
+    "n_uniform_selected": 186,
+    "n_verified_inliers": 174,
+    "inlier_ratio": 0.9355,
+    "rmse_px": 1.3567,
+    "median_error_px": 1.1355,
+    "max_error_px": 3.8216,
+    "spatial_coverage": 0.62,
+    "illumination_representation": "clahe",
+    "model_type": "similarity",
+    "quality_passed": true,
+    "quality_reasons": [],
+    "source_decimation": 1.0,
+    "reference_decimation": 1.0,
+    "n_subpixel_refined": 169,
+    "inlier_distribution": {
+      "grid_cols": 8,
+      "grid_rows": 8,
+      "occupied_cells": 47,
+      "total_cells": 64,
+      "occupied_fraction": 0.7344,
+      "max_points_in_cell": 4,
+      "gini": 0.3114
+    },
+    "candidate_distribution": {
+      "grid_cols": 8,
+      "grid_rows": 8,
+      "occupied_cells": 48,
+      "total_cells": 64,
+      "occupied_fraction": 0.75,
+      "max_points_in_cell": 4,
+      "gini": 0.273
+    },
+    "known_transform_error": {
+      "mean_px": 0.3411,
+      "median_px": 0.317,
+      "max_px": 0.6852,
+      "rmse_px": 0.4001,
+      "n_samples": 25
+    }
+  },
+  "stages": [
+    {
+      "key": "prior",
+      "label": "Geometric prior",
+      "status": "skipped",
+      "detail": "No overlap prior available. Ground scale unknown for source; falling back to an independent pixel budget per image, which does not bring the pair to a common scale.",
+      "duration_ms": 2.36
+    },
+    {
+      "key": "load",
+      "label": "Images loaded",
+      "status": "ok",
+      "detail": "source 572x4470 (decimated 1.000), reference 572x4470 (decimated 1.000)",
+      "duration_ms": 53.06
+    },
+    {
+      "key": "normalize",
+      "label": "Radiometric normalisation",
+      "status": "ok",
+      "detail": "valid data source 100.0%, reference 98.8%",
+      "duration_ms": 107.63
+    },
+    {
+      "key": "illumination",
+      "label": "Illumination handling",
+      "status": "ok",
+      "detail": "representation 'clahe' applied to both images",
+      "duration_ms": 9.43
+    },
+    {
+      "key": "matching",
+      "label": "Feature matching",
+      "status": "ok",
+      "detail": "3815 candidate matches from sift",
+      "duration_ms": 1358.18
+    },
+    {
+      "key": "distribution",
+      "label": "Uniform spatial selection",
+      "status": "ok",
+      "detail": "186 of 3815 kept (8x8 grid, max 4/cell)",
+      "duration_ms": 1.49
+    },
+    {
+      "key": "ransac",
+      "label": "Geometric verification",
+      "status": "ok",
+      "detail": "183 verified inliers of 186 (similarity, threshold 3.0 px)",
+      "duration_ms": 0.33
+    },
+    {
+      "key": "refine",
+      "label": "Sub-pixel refinement",
+      "status": "ok",
+      "detail": "169 of 183 inliers refined by local NCC; 174 inliers after re-estimation",
+      "duration_ms": 19.48
+    },
+    {
+      "key": "warp",
+      "label": "Registered image produced",
+      "status": "ok",
+      "detail": "source warped into reference frame 572x4470",
+      "duration_ms": 7.97
+    }
+  ],
+  "notes": [
+    "No overlap prior: the products' geometry could not place one in the other, so the whole reference is searched."
+  ],
+  "display": {
+    "source": {
+      "file": "display_source.png",
+      "width": 115,
+      "height": 899,
+      "scale_from_working": 0.20134
+    },
+    "reference": {
+      "file": "display_reference.png",
+      "width": 115,
+      "height": 899,
+      "scale_from_working": 0.20134
+    },
+    "registered": {
+      "file": "display_registered.png",
+      "width": 115,
+      "height": 899,
+      "scale_from_working": 0.20134
+    }
+  }
+}

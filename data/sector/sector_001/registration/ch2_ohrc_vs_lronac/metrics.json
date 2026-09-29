@@ -1,0 +1,138 @@
+{
+  "scene_id": "ch2_ohrc_vs_lronac",
+  "generated_at": "2026-09-19T14:06:41.306423+00:00",
+  "succeeded": false,
+  "source_ref": "/vsizip/data/raw/chandrayaan2/ohrc/ch2_ohr_ncp_20190907T0438126359_d_img_g26.zip/browse/calibrated/20190907/ch2_ohr_ncp_20190907T0438126359_b_brw_g26.png",
+  "reference_ref": "data/raw/reference/lro/nac/M1322346287LC.IMG",
+  "uses_dem": false,
+  "uses_spice": false,
+  "caveat": "Image-space registration only. Without a camera model or DEM these residuals describe agreement between two image planes, not ground accuracy.",
+  "metrics": {
+    "n_candidate_matches": 26,
+    "n_uniform_selected": 26,
+    "n_verified_inliers": 3,
+    "inlier_ratio": 0.1154,
+    "rmse_px": 0.0,
+    "median_error_px": 0.0,
+    "max_error_px": 0.0,
+    "spatial_coverage": 0.02,
+    "illumination_representation": "clahe",
+    "model_type": "similarity",
+    "quality_passed": false,
+    "quality_reasons": [
+      "Only 3 verified inliers for a similarity model that needs 2; below the degeneracy floor of 6, so the fit is unconstrained and its residuals are not meaningful.",
+      "26 candidate matches is below the configured minimum of 30.",
+      "Inlier ratio 0.115 is below the configured minimum of 0.35.",
+      "Inlier spatial coverage 0.020 is below the configured minimum of 0.3; the transform is constrained in only part of the frame.",
+      "Inlier distribution gini 0.974 exceeds the configured maximum of 0.65; the matches occupy the frame unevenly."
+    ],
+    "source_decimation": 0.40951,
+    "reference_decimation": 0.1872,
+    "n_subpixel_refined": 0,
+    "inlier_distribution": {
+      "grid_cols": 8,
+      "grid_rows": 8,
+      "occupied_cells": 2,
+      "total_cells": 64,
+      "occupied_fraction": 0.0312,
+      "max_points_in_cell": 2,
+      "gini": 0.974
+    },
+    "candidate_distribution": {
+      "grid_cols": 8,
+      "grid_rows": 8,
+      "occupied_cells": 19,
+      "total_cells": 64,
+      "occupied_fraction": 0.2969,
+      "max_points_in_cell": 3,
+      "gini": 0.7608
+    }
+  },
+  "stages": [
+    {
+      "key": "prior",
+      "label": "Geometric prior",
+      "status": "ok",
+      "detail": "86 of 121 source grid points land in the reference (71%). Reference read restricted to 2532 x 20592 px of 2532 x 52224, a 2.5x reduction. Both images resampled to 6.967 m/px. Native scales differ by 2.19x (source 2.853 via nav_grid, reference 1.304 via spice).",
+      "duration_ms": 2290.56
+    },
+    {
+      "key": "load",
+      "label": "Images loaded",
+      "status": "ok",
+      "detail": "source 491x3837 (decimated 0.410), reference 474x3855 (decimated 0.187), working 6.97 m/px",
+      "duration_ms": 564.34
+    },
+    {
+      "key": "normalize",
+      "label": "Radiometric normalisation",
+      "status": "ok",
+      "detail": "valid data source 100.0%, reference 98.9%",
+      "duration_ms": 114.29
+    },
+    {
+      "key": "illumination",
+      "label": "Illumination handling",
+      "status": "ok",
+      "detail": "representation 'clahe' applied to both images",
+      "duration_ms": 8.12
+    },
+    {
+      "key": "matching",
+      "label": "Feature matching",
+      "status": "ok",
+      "detail": "26 candidate matches from sift",
+      "duration_ms": 1085.38
+    },
+    {
+      "key": "distribution",
+      "label": "Uniform spatial selection",
+      "status": "ok",
+      "detail": "26 of 26 kept (8x8 grid, max 4/cell)",
+      "duration_ms": 0.77
+    },
+    {
+      "key": "ransac",
+      "label": "Geometric verification",
+      "status": "ok",
+      "detail": "3 verified inliers of 26 (similarity, threshold 3.0 px)",
+      "duration_ms": 0.47
+    },
+    {
+      "key": "refine",
+      "label": "Sub-pixel refinement",
+      "status": "ok",
+      "detail": "0 of 3 inliers refined by local NCC; 3 inliers after re-estimation",
+      "duration_ms": 1.45
+    },
+    {
+      "key": "warp",
+      "label": "Registered image produced",
+      "status": "skipped",
+      "detail": "no verified transform",
+      "duration_ms": 0.0
+    }
+  ],
+  "notes": [
+    "Only 3 verified inliers for a similarity model that needs 2; below the degeneracy floor of 6, so the fit is unconstrained and its residuals are not meaningful.",
+    "26 candidate matches is below the configured minimum of 30.",
+    "Inlier ratio 0.115 is below the configured minimum of 0.35.",
+    "Inlier spatial coverage 0.020 is below the configured minimum of 0.3; the transform is constrained in only part of the frame.",
+    "Inlier distribution gini 0.974 exceeds the configured maximum of 0.65; the matches occupy the frame unevenly.",
+    "Geometric verification did not converge. Reported values are measurements of this attempt, not a registered result."
+  ],
+  "display": {
+    "source": {
+      "file": "display_source.png",
+      "width": 115,
+      "height": 900,
+      "scale_from_working": 0.23456
+    },
+    "reference": {
+      "file": "display_reference.png",
+      "width": 110,
+      "height": 900,
+      "scale_from_working": 0.23346
+    }
+  }
+}

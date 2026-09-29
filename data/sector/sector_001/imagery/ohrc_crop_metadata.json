@@ -1,0 +1,43 @@
+{
+ "sector_id": "sector_001",
+ "built_from": "data/raw (not shipped)",
+ "centre": {
+  "longitude": 22.784,
+  "latitude": -70.881
+ },
+ "size_m": 2400.0,
+ "imagery_gsd_m": 0.5,
+ "dem_gsd_m": 5.0,
+ "basemap": {
+  "product_id": "ch2_ohr_ncp_20190907T0438126359_d_img_g26",
+  "source_ref": "/vsizip/data/raw/chandrayaan2/ohrc/ch2_ohr_ncp_20190907T0438126359_d_img_g26.zip/browse/calibrated/20190907/ch2_ohr_ncp_20190907T0438126359_b_brw_g26.png",
+  "is_synthetic": false,
+  "width_px": 841,
+  "height_px": 841,
+  "width_m": 2399.8,
+  "height_m": 2399.8,
+  "gsd_m": 2.8535,
+  "browse_decimation": 10.0,
+  "origin_pixel": 3590.1,
+  "origin_scan": 35790.6,
+  "sun_direction_deg": 340.1,
+  "georeferenced": true,
+  "centre_longitude": 22.780745,
+  "centre_latitude": -70.88124,
+  "anchor_error_m": 6.1,
+  "notes": [
+   "Metre scale measured from the NAV grid (0.285 m/full px) differs from the label's nominal pixel_resolution (0.240); the measured value is used."
+  ]
+ },
+ "ohrc_source": {
+  "row0": 35794,
+  "col0": 3694,
+  "native_gsd_m": 0.2853
+ },
+ "notes": [
+  "OHRC cut from the full-resolution product at 0.2853 m/px (8306x8412 px) and resampled to 0.5 m/px.",
+  "NAC cut at its own 1.304 m/px sampling.",
+  "Elevation sampled from ldem_60s_60m (posted at 60 m) onto a 480x480 grid at 5.0 m/px.",
+  "239 craters detected in the sector imagery."
+ ]
+}

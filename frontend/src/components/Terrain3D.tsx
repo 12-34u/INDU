@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Line } from '@react-three/drei'
 import * as THREE from 'three'
 import type {
@@ -38,6 +38,12 @@ interface Terrain3DProps {
   localization?: LocalizationResult | null
   referenceCraters?: ReferenceCrater[]
   showLandmarks?: boolean
+  /**
+   * The sector's own imagery, covering the same ground as the elevation grid.
+   * Used as the base map so the terrain reads as the Moon rather than as a
+   * shaded heightfield. Absent (or 404) falls back to the computed ramp.
+   */
+  photoTextureUrl?: string | null
 }
 
 export const Terrain3D: React.FC<Terrain3DProps> = ({
@@ -50,8 +56,43 @@ export const Terrain3D: React.FC<Terrain3DProps> = ({
   showLandmarks = false,
   startSites,
   activeStartSiteId,
+  photoTextureUrl,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null)
+
+  /*
+   * The sector imagery, loaded separately from the computed layers.
+   *
+   * It is not always available - DEMO has no imagery that corresponds to its
+   * generated heightfield - so a failure here is expected and silent, and the
+   * procedural ramp below stands in.
+   */
+  const [photoTexture, setPhotoTexture] = useState<THREE.Texture | null>(null)
+  useEffect(() => {
+    if (!photoTextureUrl) {
+      setPhotoTexture(null)
+      return
+    }
+    let stale = false
+    const loader = new THREE.TextureLoader()
+    loader.load(
+      photoTextureUrl,
+      (texture) => {
+        if (stale) {
+          texture.dispose()
+          return
+        }
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.anisotropy = 8
+        setPhotoTexture(texture)
+      },
+      undefined,
+      () => setPhotoTexture(null)
+    )
+    return () => {
+      stale = true
+    }
+  }, [photoTextureUrl])
 
   // 1. Generate Geometry
   const geometry = useMemo(() => {
@@ -185,6 +226,15 @@ export const Terrain3D: React.FC<Terrain3DProps> = ({
     return pts
   }, [data, route, activeLayers, exaggeration])
 
+  // False colour is the point of the analytic layers, so they win over the
+  // photograph. With none of them on, show the ground as it actually looks.
+  const analyticLayerActive =
+    activeLayers.Slope ||
+    activeLayers.Roughness ||
+    activeLayers.Traversability ||
+    activeLayers.Hazards
+  const surfaceMap = !analyticLayerActive && photoTexture ? photoTexture : texture
+
   if (!data || !geometry) return null
 
   return (
@@ -192,7 +242,7 @@ export const Terrain3D: React.FC<Terrain3DProps> = ({
       {/* Terrain Mesh */}
       <mesh ref={meshRef} geometry={geometry}>
         <meshStandardMaterial
-          map={texture}
+          map={surfaceMap}
           roughness={1.0}
           metalness={0.0}
         />

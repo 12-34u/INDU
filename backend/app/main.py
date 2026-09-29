@@ -8,6 +8,8 @@ import json
 import os
 import cv2
 import numpy as np
+import rasterio
+from rasterio.enums import Resampling
 from pathlib import Path
 
 from lunar_platform.core.data_manager import DataManager, DataMode
@@ -22,6 +24,7 @@ from lunar_platform.map.reference_map import (
 )
 from lunar_platform.observation.basemap import build_sector_basemap_from_source
 from lunar_platform.observation.real_view import native_camera
+from lunar_platform.preprocessing.normalization import to_uint8
 from lunar_platform.navigation.astar import plan_path_astar
 from lunar_platform.navigation.route import route_metrics
 from lunar_platform.registration.pipeline import load_image, run_registration
@@ -92,6 +95,26 @@ class PerceptionRequest(BaseModel):
 # Recomputing the DEM and its derived layers costs seconds; every endpoint here
 # needs the same arrays, so they are memoised per data mode and sector.
 _terrain_cache: Dict[str, Any] = {}
+
+def _dem_signature() -> str:
+    """
+    Short fingerprint of whichever elevation source this mode will use.
+
+    Included in the terrain cache filename so a rebuilt or swapped DEM cannot
+    be served from a cache built against the previous one.
+    """
+    import hashlib
+
+    parts = [data_manager.active_mode.value]
+    dem_path = data_manager.get_dem_path()
+    if dem_path.exists():
+        stat = dem_path.stat()
+        parts += [dem_path.name, str(stat.st_size), str(int(stat.st_mtime))]
+    label = data_manager.get_raw_dem_label()
+    if label is not None:
+        parts.append(label.name)
+    return hashlib.sha1("|".join(parts).encode()).hexdigest()[:10]
+
 
 def _terrain_cache_key() -> str:
     return f"{data_manager.active_mode.value}:{data_manager.active_sector}"
@@ -338,7 +361,13 @@ def _get_terrain_data() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
         return _terrain_cache[cache_key]
 
     dem_path = data_manager.get_dem_path()
-    if data_manager.active_mode == DataMode.REAL_RAW and not dem_path.exists():
+    # REAL_RAW derives its elevation from data/raw, always. The condition here
+    # used to also require that the sector bundle's DEM was absent, which was
+    # true only until that bundle was built: after it existed, REAL_RAW quietly
+    # adopted REAL_LOCAL's grid and changed from 841x841 at 2.85 m to 480x480
+    # at 5 m underneath itself. The two modes mean different things and must
+    # not borrow each other's products.
+    if data_manager.active_mode == DataMode.REAL_RAW:
         # Elevation comes from the LOLA DEM under data/raw when one is there,
         # and is generated only when it is not. Either way it is built on the
         # basemap's exact extent and posting: the rover pose, the route and the
@@ -409,10 +438,15 @@ def get_terrain(max_grid_size: int = 100):
     
     mode_str = data_manager.active_mode.value.lower()
     sector_str = data_manager.active_sector
-    # Bumped when the response schema changes OR when what feeds it changes, so
-    # old cache files are ignored. v4 added detected craters and real elevation:
-    # a v3 file for the same sector and mode holds generated terrain.
-    cache_file = cache_dir / f"{sector_str}_{mode_str}_{max_grid_size}_v4.json"
+    # The key describes the DEM the response was built from, not just the mode.
+    # A version bump alone is not enough: rebuilding the sector bundle changes
+    # the elevation without changing the schema, and a cache keyed only on mode
+    # then serves a grid size that no longer matches the one the planner
+    # searches - which surfaces as "Goal out of bounds" for a goal the client
+    # was told is in range.
+    cache_file = cache_dir / (
+        f"{sector_str}_{mode_str}_{max_grid_size}_v5_{_dem_signature()}.json"
+    )
     
     if cache_file.exists():
         with open(cache_file, "r") as f:
@@ -639,9 +673,24 @@ def _run_self_check(capabilities: dict, config: dict):
     return outcome, extra
 
 
+def _registration_scene_dir(scene_id: str) -> Path:
+    """
+    Where a registration scene's products live.
+
+    Runs write to outputs/, which is derived and not deployed. A deployment
+    carries precomputed products inside the sector bundle instead, so both are
+    checked - outputs/ first, because a fresh local run should win over a
+    bundled snapshot of an older one.
+    """
+    live = Path("outputs/registration") / scene_id
+    if (live / "metrics.json").exists():
+        return live
+    return data_manager.sector_dir / data_manager.active_sector / "registration" / scene_id
+
+
 @app.get("/registration/result/{scene_id}")
 def get_registration_result(scene_id: str):
-    metrics_path = Path("outputs/registration") / scene_id / "metrics.json"
+    metrics_path = _registration_scene_dir(scene_id) / "metrics.json"
     if not metrics_path.exists():
         raise HTTPException(status_code=404, detail=f"No registration result for {scene_id}")
     with open(metrics_path) as f:
@@ -655,7 +704,7 @@ def get_registration_image(scene_id: str, name: str):
         raise HTTPException(status_code=400, detail="Only display derivatives are served.")
 
     # Resolve and confine to the scene directory so a crafted name cannot escape it.
-    root = (Path("outputs/registration") / scene_id).resolve()
+    root = _registration_scene_dir(scene_id).resolve()
     path = (root / name).resolve()
     if not str(path).startswith(str(root)) or not path.exists():
         raise HTTPException(status_code=404, detail=f"{name} not found for {scene_id}")
@@ -702,6 +751,85 @@ def get_reference_map(real: Optional[bool] = None):
         "note": "Synthetic landmark map. Catalog craters are real to this project's demo data; the rest are generated.",
         "craters": [c.model_dump() for c in craters],
     }
+
+
+@app.get("/sector/texture.png")
+def get_sector_texture(max_size: int = 2048):
+    """
+    The sector's own imagery, as a display texture for the 3D terrain.
+
+    Until now the terrain was drawn with a procedural colour ramp computed from
+    elevation and slope at the display grid's resolution - a hundred samples
+    across a 2.4 km sector. That is a shaded heightfield, not a photograph of
+    the Moon, and it discards the imagery the sector bundle already carries.
+
+    Covers exactly the same ground as the elevation grid, so the two line up
+    without the client having to register them.
+
+    A display derivative only; the science raster is never served whole.
+    """
+    # Only modes whose imagery and elevation describe the SAME ground. DEMO
+    # has a synthetic heightfield and an unrelated demo image; draping one on
+    # the other would look convincing and mean nothing.
+    if data_manager.active_mode == DataMode.DEMO:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "DEMO elevation is generated and its demo image is unrelated to it, "
+                "so there is no texture that corresponds to the terrain. The 3D view "
+                "uses its computed colour ramp."
+            ),
+        )
+
+    source = None
+
+    if data_manager.active_mode == DataMode.REAL_RAW:
+        try:
+            source = _simulation_basemap().image
+        except HTTPException:
+            source = None
+
+    if source is None:
+        crop = data_manager.get_input_image_path()
+        if crop.exists():
+            try:
+                with rasterio.open(crop) as src:
+                    # Decimate on read: the full crop can be thousands of
+                    # pixels square and only max_size of it is ever shown.
+                    scale = min(1.0, max_size / max(src.width, src.height))
+                    source = src.read(
+                        1,
+                        out_shape=(
+                            max(1, int(src.height * scale)),
+                            max(1, int(src.width * scale)),
+                        ),
+                        resampling=Resampling.average,
+                    )
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail=f"Could not read sector imagery: {exc}")
+
+    if source is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"{data_manager.active_mode.value} has no sector imagery to texture with. "
+                "The terrain falls back to its computed colour ramp."
+            ),
+        )
+
+    image = to_uint8(source)
+    if max(image.shape[:2]) > max_size:
+        scale = max_size / float(max(image.shape[:2]))
+        image = cv2.resize(
+            image,
+            (max(1, int(image.shape[1] * scale)), max(1, int(image.shape[0] * scale))),
+            interpolation=cv2.INTER_AREA,
+        )
+
+    ok, encoded = cv2.imencode(".png", image)
+    if not ok:
+        raise HTTPException(status_code=500, detail="Could not encode the sector texture")
+    return Response(content=encoded.tobytes(), media_type="image/png")
 
 
 @app.get("/simulation/basemap")

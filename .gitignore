@@ -116,12 +116,16 @@ data/working/
 # =========================
 # Keep sector metadata/manifests tracked,
 # but ignore generated/large sector assets.
+# The sector bundle IS the deployed payload: a small crop of imagery,
+# elevation and craters cut from data/raw by scripts/build_sector_bundle.py.
+# It has to be committed, or the container clones without the data it serves.
+# These directories are therefore tracked. Git cannot re-include a file whose
+# parent directory is excluded, so they cannot be excluded-then-negated.
+#
+# Keep them small. They are checked into the repository.
 data/sector/*/input/
 data/sector/*/reference/
-data/sector/*/dem/
-data/sector/*/craters/
 data/sector/*/cache/
-data/sector/*/imagery/
 
 # Always keep the sector manifest
 !data/sector/*/manifest.yaml
@@ -151,3 +155,5 @@ Thumbs.db
 # repository, so `git add -A` stages it as a gitlink rather than as files,
 # and it also breaks pytest collection with duplicate test basenames.
 /INDU/
+.vercel
+.env*

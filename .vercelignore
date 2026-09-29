@@ -1,0 +1,31 @@
+# Vercel builds only the frontend (project Root Directory = frontend).
+# Everything below is enormous, secret, or irrelevant to a static build.
+#
+# Every path is anchored with a leading slash so it matches ONLY at the
+# repository root. An unanchored `src` also matches `frontend/src`, which
+# excludes the application's own source and fails the build with TS18003.
+/data
+/outputs
+
+# Backend and science code: built and deployed separately on Render.
+/backend
+/src
+/configs
+/scripts
+/tests
+/docs
+
+# A stray second checkout of this project that lives inside it.
+/INDU
+
+# Local environments and caches
+/.venv
+**/node_modules
+**/__pycache__
+**/*.pyc
+/.pytest_cache
+
+# Secrets and local overrides
+.env
+.env.*
+!.env.example
