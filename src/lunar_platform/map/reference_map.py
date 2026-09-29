@@ -21,12 +21,31 @@ from ..crater_mapping.models import ReferenceCrater
 # localisation results must be reproducible between runs.
 REFERENCE_SEED = 20240917
 
+# Landmarks per square kilometre.
+#
+# This is a DENSITY rather than a count because the matcher's requirement is
+# local: match_constellation needs min_inliers distinct candidates agreeing on
+# one position, and a candidate only exists for a crater inside the current
+# observation frame. What decides whether a fix is possible is therefore how
+# many landmarks fall in one frame, not how many exist in the sector.
+#
+# A fixed count silently fails that test as the sector grows. 130 craters is
+# 15 per frame over the demo's 1 km sector and every pose can be fixed; the
+# same 130 over a 2.4 km sector is 2.5 per frame, below the floor of 4, and
+# localisation then fails almost everywhere for a reason that looks like a
+# matcher fault and is not one.
+#
+# 130/km² is the demo's density, which is the density the aggregation and
+# matching thresholds were tuned against.
+REFERENCE_DENSITY_PER_KM2 = 130.0
+
 
 def build_reference_map(
     width_m: float,
     height_m: float,
     catalog_craters: list[dict] | None = None,
-    n_synthetic: int = 130,
+    n_synthetic: int | None = None,
+    density_per_km2: float = REFERENCE_DENSITY_PER_KM2,
     # Kept small relative to the observation footprint: craters spanning half
     # the frame overlap so heavily that their rims cannot be separated.
     min_diameter_m: float = 20.0,
@@ -40,7 +59,15 @@ def build_reference_map(
     Catalog craters are kept verbatim; synthetic craters fill the rest of the
     sector under a minimum-separation constraint so the constellation matcher
     is not fed degenerate overlapping landmarks.
+
+    How many synthetic craters that is follows from the sector's area and
+    density_per_km2, so a larger sector gets proportionally more landmarks and
+    the number visible in one observation stays roughly constant. Passing
+    n_synthetic overrides the density with an explicit count.
     """
+    if n_synthetic is None:
+        n_synthetic = int(round(density_per_km2 * (width_m * height_m) / 1e6))
+
     craters: list[ReferenceCrater] = []
     placed: list[tuple[float, float]] = []
 
