@@ -44,9 +44,12 @@ services:
       - key: CORS_ORIGINS
         sync: false
 
-      # DEMO is the only mode a bare deployment can serve. The real modes need
-      # products under data/raw, which is not in the repository.
+      # REAL_LOCAL serves the derived sector bundle committed under
+      # data/sector/, so the deployment shows real OHRC imagery, the real LOLA
+      # DEM and real craters. REAL_RAW is the mode that needs data/raw, which
+      # is deliberately not in the repository. If the bundle is ever missing
+      # the app logs the reason and falls back to DEMO rather than failing.
       - key: DATA_MODE
-        value: DEMO
+        value: REAL_LOCAL
 
     # PORT is injected by Render; the start command binds whatever it is given.
