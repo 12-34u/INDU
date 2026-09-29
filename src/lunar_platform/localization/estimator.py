@@ -30,7 +30,7 @@ from ..observation.quadrants import QuadrantView, split_quadrants
 from ..observation.real_view import render_real_observation
 from ..observation.synthetic_view import render_observation
 from ..simulation.camera import NadirCamera, RoverPose
-from .matching import match_constellation
+from .matching import MIN_CONSTELLATION_INLIERS, match_constellation
 
 
 @dataclass
@@ -142,7 +142,23 @@ def run_pipeline(
             np.hypot(solution.estimated_x_m - pose.x_m, solution.estimated_y_m - pose.y_m)
         )
 
-    if solution.estimated_x_m is None:
+    # Two different failures read identically from the matcher's return value,
+    # and conflating them sends you looking for a detector fault that is not
+    # there. Too few landmarks in range is a property of where the rover is
+    # standing - near a sector corner most of the frame is off-map - and no
+    # detection quality can overcome it.
+    starved = len(in_range) < MIN_CONSTELLATION_INLIERS
+
+    if solution.estimated_x_m is None and starved:
+        note = (
+            f"No fix is possible from this position: only {len(in_range)} reference "
+            f"landmark{'' if len(in_range) == 1 else 's'} lie within the camera's "
+            f"{camera.max_range_m:.0f} m range and {MIN_CONSTELLATION_INLIERS} must "
+            "agree on a position. This is the edge of the localizable area rather "
+            "than a matching failure; drive toward the sector interior and observe "
+            "again."
+        )
+    elif solution.estimated_x_m is None:
         note = "Match failed: too few consistent crater correspondences to fix a position."
     elif is_synthetic:
         note = "Demo localization. Synthetic observation, error measured against the rendering pose."
@@ -157,6 +173,8 @@ def run_pipeline(
             detail=(
                 f"error {error_m:.2f} m against ground truth"
                 if error_m is not None
+                else f"outside localizable area - {len(in_range)} landmarks in range"
+                if starved
                 else "no position fix"
             ),
             duration_ms=0.0,

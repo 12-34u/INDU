@@ -67,12 +67,21 @@ def _cluster_spread_m(
     return float(np.sqrt(((points - centre) ** 2).sum(axis=1).mean()))
 
 
+# How many DISTINCT candidates must agree on one position before it is
+# reported. Exported because it is also a precondition: support counts distinct
+# candidates, and a candidate can only exist for a landmark inside the current
+# frame, so with fewer than this many landmarks in camera range no fix is
+# possible however well the detector performs. Callers use it to tell "there
+# was nothing here to match" from "the match was attempted and failed".
+MIN_CONSTELLATION_INLIERS = 4
+
+
 def match_constellation(
     candidates: list[CraterCandidate],
     references: list[ReferenceCrater],
     position_tolerance_m: float = 18.0,
     diameter_tolerance: float = 0.35,
-    min_inliers: int = 4,
+    min_inliers: int = MIN_CONSTELLATION_INLIERS,
     ambiguity_ratio: float = 0.75,
     ambiguity_spread_ratio: float = 3.0,
 ) -> MatchSolution:
